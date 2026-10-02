@@ -1,169 +1,159 @@
-# Food Delivery Time Prediction
+# 🍔 Food Delivery Time Prediction
 
-Predict how many minutes a food delivery will take, based on the delivery partner, the route, the weather, traffic and the order itself. A trained **XGBoost** model is served through a **FastAPI** backend, with a responsive HTML, CSS and JavaScript frontend.
+An end-to-end **Machine Learning web application** that predicts food delivery time in minutes based on delivery partner details, distance, traffic, weather, vehicle condition, order type, festival status, and city information.
 
-**Live demo:** https://meek-cat-baeed5.netlify.app/
+The project uses **XGBoost Regression** for prediction, **FastAPI** for the REST API, and **HTML, CSS & JavaScript** for the frontend.
 
----
+## 🚀 Live Demo
 
-## Features
+**Frontend:**
+https://meek-cat-baeed5.netlify.app/
 
-- Delivery-time estimate in minutes from 15 order, route and condition inputs
-- Distance is calculated automatically from coordinates with the Haversine formula
-- Live straight-line distance preview and a pickup/drop-off swap button
-- One-click example scenarios (rush-hour jam, quiet morning, stormy festival night)
-- Animated route view, speed estimate and a fast / typical / slow indicator
-- History of the last five predictions
-- API health indicator and a configurable API address
-- Input validation on both the client (JavaScript) and the server (Pydantic)
-- Light and dark mode, keyboard accessible, mobile friendly
+## 🎯 Project Highlights
 
-## Tech stack
+* Built an end-to-end **ML prediction system** from data preprocessing to deployment.
+* Used **XGBoost Regression** for delivery-time prediction.
+* Calculated delivery distance using the **Haversine Formula**.
+* Implemented feature preprocessing using **StandardScaler** and categorical encoding.
+* Developed a **FastAPI REST API** for real-time predictions.
+* Built an interactive frontend using **HTML, CSS and JavaScript**.
+* Deployed the frontend using **Netlify** and connected it with the backend API.
 
-| Layer | Tools |
-|-------|-------|
-| Model | XGBoost, scikit-learn (`StandardScaler`), joblib |
-| Backend | FastAPI, Pydantic, Uvicorn, pandas, NumPy |
-| Frontend | HTML, CSS, vanilla JavaScript |
-| Hosting | Netlify (frontend) |
+## 🧠 Machine Learning Workflow
 
-## Project structure
-
+```text
+Raw Dataset
+     ↓
+Data Cleaning & Preprocessing
+     ↓
+Feature Engineering
+     ↓
+Distance Calculation
+     ↓
+Categorical Encoding
+     ↓
+Feature Scaling
+     ↓
+XGBoost Regression
+     ↓
+Model Evaluation
+     ↓
+FastAPI Deployment
+     ↓
+Web Application
 ```
-Food-Delivery-Time-Prediction/
-├── main.py                # FastAPI app (API + feature engineering)
-├── xgb_best.pkl           # Trained XGBoost model
-├── standard_scaler.pkl    # Fitted StandardScaler
-├── index.html             # Frontend page
-├── style.css              # Frontend styles
-├── script.js              # Frontend logic
-├── requirements.txt       # Python dependencies
-└── README.md
+
+## 📊 Features Used
+
+The model uses important delivery-related features such as:
+
+* Delivery Person Age
+* Delivery Person Ratings
+* Distance in KM
+* Order Hour
+* Road Traffic Density
+* Vehicle Condition
+* Multiple Deliveries
+* Type of Order
+* Type of Vehicle
+* Weather Conditions
+* Festival
+* City
+
+## 🛠️ Tech Stack
+
+**Languages:**
+Python, HTML, CSS, JavaScript
+
+**Machine Learning:**
+XGBoost, Scikit-learn
+
+**Data Processing:**
+Pandas, NumPy
+
+**Backend:**
+FastAPI, Uvicorn, Pydantic
+
+**Model Deployment:**
+Joblib, REST API
+
+**Frontend Deployment:**
+Netlify
+
+## 🔌 API
+
+The backend provides REST endpoints for health checking and delivery-time prediction.
+
+### Health Check
+
+```http
+GET /health
 ```
 
-Adjust the tree if your folder layout differs.
+### Prediction
 
-## How it works
+```http
+POST /predict
+```
 
-1. The user submits order details from the web form.
-2. The API computes `distance_km` from the restaurant and drop-off coordinates and extracts `order_hour` from the order time.
-3. Categorical inputs (order type, vehicle, weather, city, festival) are one-hot encoded, and traffic is encoded as an ordinal value (Low = 0 to Jam = 3).
-4. Features are arranged in the exact order the model was trained on, scaled with `StandardScaler`, and passed to the XGBoost model.
-5. The predicted time is returned in minutes, together with the distance and order hour.
+FastAPI interactive documentation:
 
-### Model features
+```text
+http://127.0.0.1:8000/docs
+```
 
-`Delivery_person_Age`, `Delivery_person_Ratings`, `distance_km`, `order_hour`, `Road_traffic_density`, `Vehicle_condition`, `multiple_deliveries`, plus one-hot columns for `Type_of_order`, `Type_of_vehicle`, `Festival`, `City` and `Weatherconditions`.
+## 💻 Run Locally
 
-## Getting started
-
-### 1. Clone the repository
+### Clone Repository
 
 ```bash
 git clone https://github.com/Premchougule1008/Food-Delivery-Time-Prediction.git
 cd Food-Delivery-Time-Prediction
 ```
 
-### 2. Install dependencies
+### Install Dependencies
 
 ```bash
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 3. Start the API
+### Start FastAPI Server
 
 ```bash
-uvicorn main:app --reload
+python -m uvicorn main:app --reload
 ```
 
-The API runs at `http://127.0.0.1:8000`. Interactive docs are at `http://127.0.0.1:8000/docs`.
+API will be available at:
 
-### 4. Open the frontend
-
-Open `index.html` in your browser, or serve it locally:
-
-```bash
-python -m http.server 5500
+```text
+http://127.0.0.1:8000
 ```
 
-Then visit `http://localhost:5500`. The page connects to `http://127.0.0.1:8000` by default. Use **Change API address** in the page header to point it at another server.
+## 📁 Project Structure
 
-## API reference
-
-### `GET /health`
-
-Returns `{"status": "ok"}` when the model and scaler are loaded, or `503` if they are not.
-
-### `POST /predict`
-
-**Request body**
-
-```json
-{
-  "delivery_person_age": 29,
-  "delivery_person_ratings": 4.6,
-  "restaurant_latitude": 12.9716,
-  "restaurant_longitude": 77.5946,
-  "delivery_location_latitude": 12.9916,
-  "delivery_location_longitude": 77.6146,
-  "time_ordered": "18:30:00",
-  "weatherconditions": "Sunny",
-  "road_traffic_density": "Medium",
-  "vehicle_condition": 2,
-  "type_of_order": "Meal",
-  "type_of_vehicle": "motorcycle",
-  "multiple_deliveries": 0,
-  "festival": "No",
-  "city": "Metropolitian"
-}
+```text
+Food-Delivery-Time-Prediction/
+│
+├── main.py
+├── xgb_best.pkl
+├── standard_scaler.pkl
+├── requirements.txt
+├── Food delivery.csv
+├── Food_Delivery_Time_Prediction.ipynb
+│
+├── frontend/
+│   ├── index.html
+│   ├── style.css
+│   └── script.js
+│
+└── README.md
 ```
 
-**Response**
-
-```json
-{
-  "predicted_delivery_time_minutes": 27.4,
-  "distance_km": 3.07,
-  "order_hour": 18
-}
-```
-
-**Allowed values**
-
-| Field | Values |
-|-------|--------|
-| `road_traffic_density` | `Low`, `Medium`, `High`, `Jam` |
-| `weatherconditions` | `Fog`, `Sandstorms`, `Stormy`, `Sunny`, `Windy` |
-| `type_of_order` | `Buffet`, `Drinks`, `Meal`, `Snack` |
-| `type_of_vehicle` | `electric_scooter`, `motorcycle`, `scooter` |
-| `city` | `Semi-Urban`, `Urban`, `Metropolitian` |
-| `festival` | `Yes`, `No` |
-| `time_ordered` | `HH:MM:SS` (24-hour) |
-| `vehicle_condition` | integer 0 to 5 |
-| `multiple_deliveries` | 0 to 3 |
-| `delivery_person_ratings` | 0 to 5 |
-
-## Deployment
-
-- **Frontend:** deployed on Netlify at https://meek-cat-baeed5.netlify.app/. Upload `index.html`, `style.css` and `script.js` as a static site.
-- **Backend:** Netlify does not run Python servers, so host the FastAPI app separately (for example on Render, Railway or Hugging Face Spaces). Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`.
-- After deploying the backend, set its public URL as the default `API_BASE` in `script.js`, or enter it through **Change API address** on the page.
-- CORS is currently open to all origins (`allow_origins=["*"]`). For production, restrict it to your Netlify domain.
-
-
-## Future improvements
-
-- Address search and map picker instead of typing coordinates
-- Show model performance metrics (MAE, RMSE, R²) and feature importance
-- Dockerfile for one-command deployment
-- Unit tests for feature engineering and the API
-
-## Author
+## 👨‍💻 Author
 
 **Prem Chougule**
 
-## License
+GitHub:
+https://github.com/Premchougule1008
 
-Add a license of your choice (for example MIT) and mention it here.
+
