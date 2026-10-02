@@ -2,8 +2,8 @@
 
 /* ---------- Config ---------- */
 let API_BASE = (() => {
-  try { return localStorage.getItem("apiBase") || "http://127.0.0.1:8000"; }
-  catch { return "http://127.0.0.1:8000"; }
+  try { return localStorage.getItem("apiBase") || "https://food-delivery-time-prediction-bz8j.onrender.com"; }
+  catch { return "https://food-delivery-time-prediction-bz8j.onrender.com"; }
 })();
 
 const $ = (id) => document.getElementById(id);
