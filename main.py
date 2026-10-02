@@ -60,7 +60,7 @@ FEATURE_NAMES = [
 
 Traffic = Literal["Low", "Medium", "High", "Jam"]
 
-OrderType = Literal["Buffet","Drinks","Meal","Snack"]
+OrderType = Literal["Buffet","Drinks","Meal","Snack",]
 
 VehicleType = Literal["electric_scooter","motorcycle","scooter"]
 
@@ -78,38 +78,74 @@ class DeliveryRequest(BaseModel):
     User input required for delivery-time prediction.
     """
 
+    # -----------------------------------------------------
     # Delivery partner information
+    # -----------------------------------------------------
+
     delivery_person_age: float = Field(gt=0,lt=100)
 
     delivery_person_ratings: float = Field(ge=0,le=5)
 
+    # -----------------------------------------------------
     # Restaurant location
+    # -----------------------------------------------------
+
     restaurant_latitude: float = Field(ge=-90,le=90)
 
     restaurant_longitude: float = Field(ge=-180,le=180)
 
+    # -----------------------------------------------------
     # Delivery location
+    # -----------------------------------------------------
+
     delivery_location_latitude: float = Field(ge=-90,le=90)
 
     delivery_location_longitude: float = Field(ge=-180,le=180)
 
+    # -----------------------------------------------------
     # Order time
+    # Format: HH:MM:SS
+    # -----------------------------------------------------
+
     time_ordered: str = Field(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$")
 
-    # Other order information
+    # -----------------------------------------------------
+    # Weather
+    # -----------------------------------------------------
+
     weatherconditions: Weather
+
+    # -----------------------------------------------------
+    # Traffic
+    # -----------------------------------------------------
 
     road_traffic_density: Traffic
 
+    # -----------------------------------------------------
+    # Vehicle condition
+    # -----------------------------------------------------
+
     vehicle_condition: int = Field(ge=0,le=5)
+
+    # -----------------------------------------------------
+    # Order information
+    # -----------------------------------------------------
 
     type_of_order: OrderType
 
     type_of_vehicle: VehicleType
 
-    multiple_deliveries: float = Field(oge=0,le=3)
+    multiple_deliveries: float = Field(ge=0,le=3)
+
+    # -----------------------------------------------------
+    # Festival
+    # -----------------------------------------------------
 
     festival: Literal["Yes", "No"]
+
+    # -----------------------------------------------------
+    # City
+    # -----------------------------------------------------
 
     city: City
 
@@ -154,17 +190,31 @@ app.add_middleware(
 # LOAD MODEL AND SCALER
 # =========================================================
 
-try:
+model = None
+scaler = None
+ARTIFACT_ERROR = None
 
+try:
     model = joblib.load(MODEL_PATH)
     scaler = joblib.load(SCALER_PATH)
-    ARTIFACT_ERROR = None
 
-except (FileNotFoundError, ValueError, ImportError) as exc:
-
-    model = None
-    scaler = None
+except (FileNotFoundError, ValueError, ImportError, EOFError) as exc:
     ARTIFACT_ERROR = str(exc)
+
+
+# =========================================================
+# ROOT ENDPOINT
+# =========================================================
+
+@app.get("/")
+def root():
+    return {
+        "message": "Food Delivery Time Prediction API is running",
+        "status": "ok",
+        "docs": "/docs",
+        "health": "/health",
+        "prediction_endpoint": "/predict",
+    }
 
 
 # =========================================================
@@ -190,16 +240,17 @@ def haversine_distance_km(
     )
 
     delta_latitude = lat_two - lat_one
-
     delta_longitude = lon_two - lon_one
 
     value = (
         np.sin(delta_latitude / 2) ** 2
-        +
-        np.cos(lat_one)
+        + np.cos(lat_one)
         * np.cos(lat_two)
         * np.sin(delta_longitude / 2) ** 2
     )
+
+    # Prevent floating-point errors
+    value = np.clip(value, 0, 1)
 
     distance = (
         2
@@ -215,7 +266,7 @@ def haversine_distance_km(
 # =========================================================
 
 def build_feature_vector(
-    request: DeliveryRequest
+    request: DeliveryRequest,
 ) -> pd.DataFrame:
 
     # -----------------------------------------------------
@@ -250,6 +301,13 @@ def build_feature_vector(
     # 4. Numerical features
     # -----------------------------------------------------
 
+    traffic_mapping = {
+        "Low": 0,
+        "Medium": 1,
+        "High": 2,
+        "Jam": 3,
+    }
+
     features.update(
         {
             "Delivery_person_Age":
@@ -265,12 +323,9 @@ def build_feature_vector(
                 order_hour,
 
             "Road_traffic_density":
-                {
-                    "Low": 0,
-                    "Medium": 1,
-                    "High": 2,
-                    "Jam": 3,
-                }[request.road_traffic_density],
+                traffic_mapping[
+                    request.road_traffic_density
+                ],
 
             "Vehicle_condition":
                 request.vehicle_condition,
@@ -287,9 +342,8 @@ def build_feature_vector(
     for category in [
         "Drinks",
         "Meal",
-        "Snack"
+        "Snack",
     ]:
-
         features[
             f"Type_of_order_{category}"
         ] = int(
@@ -303,9 +357,8 @@ def build_feature_vector(
     for category in [
         "electric_scooter",
         "motorcycle",
-        "scooter"
+        "scooter",
     ]:
-
         features[
             f"Type_of_vehicle_{category}"
         ] = int(
@@ -326,9 +379,8 @@ def build_feature_vector(
 
     for category in [
         "Semi-Urban",
-        "Urban"
+        "Urban",
     ]:
-
         features[
             f"City_{category}"
         ] = int(
@@ -344,9 +396,8 @@ def build_feature_vector(
         "Sandstorms",
         "Stormy",
         "Sunny",
-        "Windy"
+        "Windy",
     ]:
-
         features[
             f"Weatherconditions_{category}"
         ] = int(
@@ -364,7 +415,7 @@ def build_feature_vector(
                 for name in FEATURE_NAMES
             ]
         ],
-        columns=FEATURE_NAMES
+        columns=FEATURE_NAMES,
     )
 
 
@@ -376,17 +427,17 @@ def build_feature_vector(
 def health_check():
 
     if model is None or scaler is None:
-
         raise HTTPException(
             status_code=503,
             detail=(
                 f"Model artifacts unavailable: "
                 f"{ARTIFACT_ERROR}"
-            )
+            ),
         )
 
     return {
-        "status": "ok"
+        "status": "ok",
+        "message": "Model and scaler loaded successfully",
     }
 
 
@@ -396,10 +447,10 @@ def health_check():
 
 @app.post(
     "/predict",
-    response_model=PredictionResponse
+    response_model=PredictionResponse,
 )
 def predict_delivery_time(
-    request: DeliveryRequest
+    request: DeliveryRequest,
 ):
 
     # -----------------------------------------------------
@@ -407,13 +458,12 @@ def predict_delivery_time(
     # -----------------------------------------------------
 
     if model is None or scaler is None:
-
         raise HTTPException(
             status_code=503,
             detail=(
                 f"Model artifacts unavailable: "
                 f"{ARTIFACT_ERROR}"
-            )
+            ),
         )
 
     # -----------------------------------------------------
@@ -428,36 +478,49 @@ def predict_delivery_time(
     # Scale features
     # -----------------------------------------------------
 
-    scaled_features = scaler.transform(
-        raw_features
-    )
+    try:
+        scaled_features = scaler.transform(
+            raw_features
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Feature scaling failed: {str(exc)}",
+        )
 
     # -----------------------------------------------------
     # Model prediction
     # -----------------------------------------------------
 
-    prediction = float(
-        model.predict(
-            scaled_features
-        )[0]
-    )
+    try:
+        prediction = float(
+            model.predict(
+                scaled_features
+            )[0]
+        )
+
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Prediction failed: {str(exc)}",
+        )
 
     # -----------------------------------------------------
     # Return result
     # -----------------------------------------------------
 
     return PredictionResponse(
-
         predicted_delivery_time_minutes=round(
             max(prediction, 0),
-            2
+            2,
         ),
 
         distance_km=round(
             float(
                 raw_features.iloc[0]["distance_km"]
             ),
-            3
+            3,
         ),
 
         order_hour=int(

@@ -3,7 +3,7 @@
 /* ---------- API ---------- */
 
 const API_BASE =
-  "https://food-delivery-time-prediction-bz8j.onrender.com";
+  "http://127.0.0.1:8000";
 
 
 /* ---------- Elements ---------- */
